@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# identify PDF files without bookmark entries
+
+LogFile="non_bookmarked.log"
+
+if [[ "$#" -lt "1" ]]
+  then
+      echo "Usage: $0 /path/to/PDFDirectory"
+      exit 1
+fi
+
+while IFS= read -r -d $'\0' File; do
+    pdftkOut="$(pdftk "$File" dump_data 2>/dev/null)"
+    RET_PDFTK="$?"
+    if [[ ! "$RET_PDFTK" = "0" ]]
+      then
+          ReadError=1
+          echo "Error while reading $File. Skipping..." | tee -a "$LogFile"
+          continue
+    fi
+    if [[ -z "$pdftkOut" ]]
+      then
+          echo "No bookmarks: $File" | tee -a "$LogFile"
+      else
+          echo "OK: $File"
+    fi
+done < <(find "$@" -type f -name '*.pdf' -print0)
+
+echo "Done."
+
+if [[ "$ReadError" = "1" ]]
+  then
+      echo "There were some errors." >> "$LogFile"
+fi

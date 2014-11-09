@@ -1,0 +1,85 @@
+#!/bin/bash
+#
+# toggle_ppa.sh
+#
+# created by souravc (http://askubuntu.com/users/127327/)
+# modified by Glutanimate (http://askubuntu.com/users/81372/)
+#
+# originally released at http://askubuntu.com/q/383605/81372
+#
+# DESCRIPTION:  Detects if PPA is active/inactive and deactivates/activates it
+#               on user confirmation.
+#
+# USAGE:        toggle_ppa.sh ppa:launchpaduser/ppaname
+
+### VARIABLES
+
+SOURCEDIRECTORY=/etc/apt/sources.list.d
+PPA="$1"
+
+### USAGE CHECKS
+
+## Arguments
+
+if [ -z "$PPA" ]
+then
+    echo "Error: Please provide a PPA name to toggle between activation/deactivation"
+    echo "The PPA name should be formatted as it appears on launchpad, e.g.:
+"$0" ppa:webupd8team/y-ppa-manager"
+    exit 1
+fi
+
+## Root privileges
+
+if [ "$(whoami)" != "root" ]; then
+  echo "Error: This script needs root privileges. Restarting..."
+  sudo "$0" "$1"
+  exit
+fi
+
+### MAIN
+
+SOURCELIST_NOPFX=$(echo "${PPA#*:}") #remove 'ppa:' prefix
+SOURCELIST=$(echo "${SOURCELIST_NOPFX////-}")-$(lsb_release -cs) #replace all slashes with dashes, include release
+SOURCEFILE="$SOURCEDIRECTORY"/"$SOURCELIST".list #compose sources list path
+
+if [ -e "$SOURCEFILE" ]
+then
+    echo "Processing $SOURCEFILE..."
+    SOURCE_COMMENTED=$(grep "^\#deb\ \|^\#\ deb\ " "$SOURCEFILE") #check if sources line is commented (#deb or # deb)
+    if [ -z "$SOURCE_COMMENTED" ]
+    then
+        echo "$PPA is active. Going to deactivate. Proceed? [ y/n ]"
+        read ANSWER
+        if [ $ANSWER == "y" ]
+        then
+            sed -i "s/^deb\-src/\#deb\-src/" "$SOURCEFILE"
+            sed -i "s/^deb\ http/\#deb\ http/" "$SOURCEFILE"
+            echo "Updating package index files..."
+            sudo apt-get update
+            echo "Done."
+        else
+            echo "Aborted."
+            exit 0
+        fi
+    else
+        echo "$PPA is inactive. Going to activate. Proceed? [ y/n ]"
+        read ANSWER
+        if [ $ANSWER == "y" ]
+        then
+            sed -i "s/^\#deb\-src/deb\-src/" "$SOURCEFILE"
+            sed -i "s/^\#deb\ http/deb\ http/" "$SOURCEFILE"
+            sed -i "s/^\#\ deb\-src/deb\-src/" "$SOURCEFILE"
+            sed -i "s/^\#\ deb\ http/deb\ http/" "$SOURCEFILE"
+            echo "Updating package index files..."
+            sudo apt-get update
+            echo "Done."
+        else
+            echo "Aborted."
+            exit 0
+        fi
+    fi
+else
+    echo "Error: Source file at $SOURCEFILE for $PPA does not exist. Please check PPA name."
+    exit 1
+fi

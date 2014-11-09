@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [[ $(cat /sys/class/power_supply/ADP1/online) == "1" ]] #Power adapter connected?
+  then
+      "$@" > /dev/null 2>&1 & #Yes --> Execute script
+      exit
+  else
+      exit #No --> Exit
+fi

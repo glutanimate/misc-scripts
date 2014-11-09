@@ -1,0 +1,139 @@
+#!/bin/bash
+
+# NAME:           ODT finder
+# AUTHOR:         (c) 2014 Glutanimate (https://github.com/Glutanimate)
+# LICENSE:        GNU GPLv3 (http://www.gnu.de/documents/gpl-3.0.en.html)
+# DEPENDENCIES    yad libreoffice unoconv
+
+
+# Dialogs
+
+Title="ODT finder"
+TxtEntry="Please enter the <b>directory</b> you would like to search through \
+and the <b>search term.</b>"
+ErrNoArgs="ERROR: Please make sure to supply both a search path and search term"
+ErrNoReslt="No results found."
+
+# Variables
+
+declare -A Results
+
+# Functions
+
+dialog_options(){
+    SearchOptions="$(yad --form --title="$Title" --text="$TxtEntry" \
+    --width=400 --height=200 --center \
+    --field="Directory":DIR \
+    --field="Search term" )"
+
+    RET="$?"
+
+    if [[ "$RET" != "0" ]]; then
+      echo "Aborting"
+      exit 1
+    fi   
+    
+    SearchPath="$(echo "$SearchOptions" | cut -d '|' -f1)"
+    SearchTerm="$(echo "$SearchOptions" | cut -d '|' -f2)"
+    
+    echo "Path: $SearchPath"
+    echo "Query: $SearchTerm"
+    
+    if [[ -z "$SearchPath" || -z "$SearchTerm" ]]; then
+      dialog_error "$ErrNoArgs"
+      dialog_options
+    fi
+}
+
+
+odt_search(){
+    while IFS= read -r -d '' File; do
+        Match="$(unoconv --format txt --stdout "$File" 2> /dev/null  | grep -m "1" -i "$SearchTerm")"
+        if [[ -n "$Match" ]]
+          then
+              echo "Match found for $File:"
+              echo "$Match"
+              Results["$File"]="$Match"
+          else
+              echo "No Result found in $File"
+        fi
+    done < <(find "$SearchPath" -type f -name '*.odt' -print0)
+    echo "1" > "$SearchState"
+}
+
+dialog_error(){
+    yad --title="$Title" \
+      --center --width="400" --height="100" \
+      --image=dialog-error \
+      --window-icon=dialog-error \
+      --class="$WMCLASS" \
+      --text="$1" \
+      --button="OK":0 2> /dev/null
+}
+
+
+
+dialog_progress(){
+    sleep 0.5
+    while true; do
+      if [[ "$(cat "$SearchState")" = "1" ]]; then
+        break
+      else
+        echo "#Searching..."
+        sleep 0.5
+      fi
+    done | \
+    yad --progress --pulsate --auto-close \
+    --width=350 --height=100 \
+    --title="$Title" \
+    --text="Searching for '<b>$SearchTerm</b>' in '<b>$SearchPath</b>' ..." \
+    --button='_Cancel!gtk-cancel!':1 \
+    2> /dev/null
+    PROG_RET="$?"
+    if [[ "$PROG_RET" != "0" ]]
+      then
+          kill -s TERM "$TOP_PID"
+    fi
+}
+
+dialog_results(){
+    TxtMain="Search results for '<b>$SearchTerm</b>' in '<b>$SearchPath</b>'"
+
+    if [[ -z "${Results[@]}" ]]; then
+      dialog_error "$ErrNoReslt"
+      exit 1
+    fi
+
+    for File in "${!Results[@]}"; do
+      echo "$File"
+      echo "Ubuntu Mono 12"
+      echo "\"[...]${Results[$File]}[...]\""
+    done | \
+    yad --list --listen --print-column=1 \
+    --expand−column=0 \
+    --title="$Title" \
+    --text="$TxtMain" \
+    --ellipsize=NONE \
+    --width=800 --height=600 --center \
+    --dclick-action="bash_yad_xdg_open %s" \
+    --column="File":TEXT --column=@font@ --column="Result":TEXT
+}
+
+
+# Prep
+
+TOP_PID="$$"
+
+SearchState="$(mktemp -u --tmpdir "${0##*/}.XXXXX")"
+echo "0" > "$SearchState"
+
+# Cleanup
+
+trap "echo "1" > "$SearchState"; sleep 1; [[ -f "$SearchState" ]] && rm -r "$SearchState"; exit" EXIT
+
+# Main
+
+dialog_options
+dialog_progress&
+odt_search
+dialog_results

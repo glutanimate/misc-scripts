@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# 'keyswap.sh' by Glutanimate
+# 
+# Reassign keys if specific application has focus
+# Dependencies: xdotool
+# 
+# Usage:    keyswap.sh '<full window class>' '<input key>' '<output key>'
+# Example:  keyswap.sh '"gnome-terminal", "Gnome-terminal"' 'F6' 'F7'
+
+# --Variables and Checks--
+
+Usage="Usage: keyswap.sh '<full window class>' '<input key>' '<output key>'"
+
+if [[ "$#" != "3" ]]; then
+  echo "Error: Insufficient arguments"
+  echo "$Usage"
+  exit 1
+fi
+
+WinClass="$1"
+OrigKey="$2"
+ReplKey="$3"
+
+# --Main--
+
+# get currently active window ID
+ActiveWinID="$(xdotool getactivewindow)"
+# get window class of active window
+ActiveWmClass="$(xprop -id "$ActiveWinID" \
+  | grep "WM_CLASS" \
+  | awk -F' = ' '{print $2}' )"
+
+# Compare with provided window class
+if [[ "$ActiveWmClass" = "$WinClass" ]]; then
+  echo "Target window found. Sending $ReplKey"
+  xdotool key "$ReplKey"
+else
+  echo "Target window not found. Sending $OrigKey"
+  xdotool key "$OrigKey"
+fi

@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# System monitoring script for XFC4-genmon-plugin
+
+# Dependencies: sysstat, lm-sensors
+# please use monospace font to prevent shifting of panel elements
+
+SENSORDATA="$(sensors)"
+FREE_OUT="$(free)"
+
+GPUTEMP="$(echo "$SENSORDATA" | grep -A 2 "radeon-pci-0200" |  awk 'END{print substr($2,2); }')"
+CORETEMP1="$(echo "$SENSORDATA" | sed -n 's/Core 0:\s\++//p' | sed -n 's/°C.*//p')"
+CORETEMP2="$(echo "$SENSORDATA" | sed -n 's/Core 2:\s\++//p' | sed -n 's/°C.*//p')"
+CPUUSAGE="$(mpstat 1 1 | tail -n 1 | awk '$11 ~ /[0-9.]+/ { print 100 - $11}' )"
+RAMUSAGE="$(echo "$FREE_OUT" | awk '/buffers\/cache/{print $3/($3+$4) * 100.0}' OFMT="%2.0f")"
+SWAPUSAGE="$(echo "$FREE_OUT" | awk '/Swap/{print $3/($3+$4) * 100.0}' OFMT="%3.2f")"
+
+USAGESTATS=$(printf '%-12s%' "M:${RAMUSAGE}% C:${CPUUSAGE}%" )
+
+#USAGESTATS2="C:$(printf '%-3s%' "${CPUUSAGE}%") R:$(printf '%-3s%' "${RAMUSAGE}%")"
+
+echo "<txt><span foreground='white'> ${USAGESTATS}</span></txt>"
+
+echo "<tool>SWP: ${SWAPUSAGE}%, TC: ${CORETEMP1}/${CORETEMP2}°C, TG: $GPUTEMP</tool>"
+echo "<click>xfce4-taskmanager</click>"
+echo "<img>/usr/share/icons/Faenza/apps/16/gnome-system-monitor.png</img>"

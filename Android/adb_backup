@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# NAME:         Android backup
+# VERSION:      
+# AUTHOR:       (c) 2014 Glutanimate
+# DESCRIPTION:  Backup android phone via inbuilt adb debugging
+# FEATURES:     
+# DEPENDENCIES: 
+#
+# LICENSE:      MIT license (http://opensource.org/licenses/MIT)
+#
+# NOTICE:       THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+#               INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+#               PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+#               LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
+#               TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE 
+#               OR OTHER DEALINGS IN THE SOFTWARE.
+#
+#
+# USAGE:        
+
+############## USGCHECKS #################
+
+if [ "$(whoami)" != "root" ]; then # check if root user
+  echo "Not root. Restarting as root."
+  sudo "$0" "$@"
+  exit
+fi
+
+############### GLOBVAR ##################
+
+BACKUPLOCATION="/media/backup/mobile/android"
+ADB="adb"
+
+############## FUNCTIONS #################
+
+TIME=$(date +"%Y-%m-%d_%H%M%S")
+
+################ MAIN ####################
+
+"$ADB" backup -apk -shared -all -system -f "$BACKUPLOCATION/androidbackup_$TIME.ab"
+
+"$ADB" kill-server
+
+exit 0
