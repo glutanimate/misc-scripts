@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # NAME:         focus_or_launch
-# VERSION:      0.1
+# VERSION:      0.4
 # AUTHOR:       (c) 2014 Glutanimate <https://github.com/Glutanimate/>
 #
 # DESCRIPTION:  Focus existing app window or launch application if no
